@@ -23,10 +23,14 @@ Qwestions is a small classroom response app. The teacher runs the server on an i
    The terminal prints the host key when the server starts. Enter it in the teacher page when prompted. The key is saved in `data/admin-key.txt`; the teacher browser remembers it after that.
 
 4. Keep iSH open while the class is using Qwestions. iPadOS may pause the server when iSH goes into the background.
-5. On the iPad, open `http://localhost:3000` to manage questions. For students, use the iPad’s Wi-Fi address shown in **Settings → Wi-Fi → ⓘ**. Open `http://<iPad-Wi-Fi-address>:3000` on the iPad to make the QR code use that address.
+5. On the iPad, open `http://localhost:3000` to manage questions. In **iPad address on this Wi-Fi**, enter `http://<iPad-Wi-Fi-address>:3000`, using the IP address shown in **Settings → Wi-Fi → ⓘ** (for example, `http://192.168.1.23:3000`). The QR code updates to use that address. You can also open that address directly on the iPad instead of `localhost`.
 6. Students scan the QR code with their camera. They do not need an account or an app.
 
 If iOS asks whether iSH can use the local network, allow it. The iPad and student devices need to be on the same Wi-Fi network, and that network must allow devices to connect to each other. School guest Wi-Fi sometimes blocks that traffic.
+
+### iSH cannot detect the Wi-Fi address
+
+Some iSH versions throw `uv_interface_addresses` / `ERR_SYSTEM_ERROR` when Node tries to list network interfaces. Qwestions treats this as unavailable address detection and keeps serving questions and responses. Open `http://localhost:3000` and enter the Wi-Fi address manually as described above. You do not need to change `HOST`; the server already listens on all network interfaces.
 
 ## Use it
 

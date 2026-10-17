@@ -4,7 +4,8 @@
   "private": true,
   "description": "A small local-network classroom question app",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node test/network-interfaces.js"
   },
   "engines": {
     "node": ">=16"

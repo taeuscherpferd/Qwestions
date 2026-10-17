@@ -43,10 +43,17 @@
 
   function setHostDefault() {
     const input = $('#host-address');
+    input.placeholder = 'http://192.168.1.23:' + state.port;
+    if (input.value.trim()) {
+      updateJoinLink();
+      return;
+    }
     const here = new URL(window.location.href);
-    const isLocal = ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(here.hostname);
-    if (isLocal && state.lanAddresses.length) {
-      input.value = here.protocol + '//' + state.lanAddresses[0].address + ':' + state.port;
+    const isLocal = ['localhost', '127.0.0.1', '0.0.0.0', '[::1]'].includes(here.hostname);
+    if (isLocal) {
+      input.value = state.lanAddresses.length
+        ? here.protocol + '//' + state.lanAddresses[0].address + ':' + state.port
+        : '';
     } else {
       input.value = here.origin;
     }
@@ -58,11 +65,12 @@
     const base = $('#host-address').value.trim().replace(/\/+$/, '');
     const link = $('#participant-link');
     const image = $('#qr-image');
-    if (!session || !base || session.id !== state.currentSessionId) {
-      link.textContent = session && session.id !== state.currentSessionId ? 'Saved class · QR unavailable' : '';
+    const isSavedClass = session && session.id !== state.currentSessionId;
+    if (!session || !base || isSavedClass) {
+      link.textContent = isSavedClass ? 'Saved class · QR unavailable' : session ? 'Enter the iPad’s Wi-Fi address above to create a QR code.' : '';
       link.removeAttribute('href');
       image.removeAttribute('src');
-      image.alt = 'QR code unavailable for a saved class';
+      image.alt = isSavedClass ? 'QR code unavailable for a saved class' : 'Enter the iPad’s Wi-Fi address to create a QR code';
       return;
     }
     let joinUrl;

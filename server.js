@@ -80,7 +80,14 @@ function currentSession() {
 
 function lanAddresses() {
   const result = [];
-  const interfaces = os.networkInterfaces();
+  let interfaces;
+  try {
+    interfaces = os.networkInterfaces();
+  } catch (error) {
+    // Some environments, including iSH, cannot enumerate network interfaces.
+    // Address discovery is optional; the teacher can enter the Wi-Fi address.
+    return result;
+  }
   Object.keys(interfaces).forEach((name) => {
     (interfaces[name] || []).forEach((address) => {
       const family = address.family;
@@ -443,7 +450,12 @@ const server = http.createServer(async (request, response) => {
 server.listen(PORT, HOST, () => {
   console.log('Qwestions is running on port ' + PORT + '.');
   console.log('Host key: ' + adminToken);
-  lanAddresses().forEach((item) => console.log('On this network: http://' + item.address + ':' + PORT));
-  if (!lanAddresses().length) console.log('Open http://localhost:' + PORT + ' on this device.');
+  console.log('On this device: http://localhost:' + PORT);
+  const addresses = lanAddresses();
+  addresses.forEach((item) => console.log('On this network: http://' + item.address + ':' + PORT));
+  if (!addresses.length) {
+    console.log('Automatic Wi-Fi address detection is unavailable. The server is still running.');
+    console.log('Find the iPad IP address in Settings > Wi-Fi > (i), then enter http://<IP-address>:' + PORT + ' in the teacher page.');
+  }
   console.log('Keep this terminal open while the class is using the app.');
 });
