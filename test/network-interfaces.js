@@ -37,12 +37,12 @@ const launcher = `
   require('./server.js');
 `;
 
-function request(port, route, body) {
+function request(port, route, body, method, key = adminKey) {
   return new Promise((resolve, reject) => {
     const req = http.request({
       hostname: '127.0.0.1', port, path: route,
-      method: body === undefined ? 'GET' : 'POST',
-      headers: { 'X-Admin-Key': adminKey, 'Content-Type': 'application/json' }
+      method: method || (body === undefined ? 'GET' : 'POST'),
+      headers: { 'X-Admin-Key': key, 'Content-Type': 'application/json' }
     }, (res) => {
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
@@ -52,6 +52,7 @@ function request(port, route, body) {
         try {
           resolve({
             status: res.statusCode,
+            headers: res.headers,
             body: (res.headers['content-type'] || '').includes('application/json')
               ? JSON.parse(buffer.toString()) : buffer
           });
@@ -103,7 +104,7 @@ async function checkServer(mode, expectedAddresses) {
       assert.strictEqual(created.status, 201);
       const questionId = created.body.question.id;
       assert.strictEqual((await request(port, '/api/questions/' + questionId + '/open', {})).status, 200);
-      assert.strictEqual((await request(port, '/api/student/' + sessionId)).body.question.id, questionId);
+      assert.strictEqual((await request(port, '/api/student/' + sessionId)).body.questions[0].id, questionId);
       const answer = 'Manual Wi-Fi addresses work.';
       assert.strictEqual((await request(port, '/api/answers', {
         sessionId, questionId, participantId: 'student-1', name: 'Student', answer
@@ -115,7 +116,57 @@ async function checkServer(mode, expectedAddresses) {
       assert(csv.body.toString().includes(answer));
       const qr = await request(port, '/api/qr?text=' + encodeURIComponent('http://192.168.1.23:3000/join/' + sessionId));
       assert.strictEqual(qr.status, 200);
-      assert.strictEqual(qr.body.slice(0, 8).toString('hex'), '89504e470d0a1a0a');
+      assert(qr.headers['content-type'].startsWith('image/svg+xml'));
+      assert(qr.body.toString().includes('<svg xmlns="http://www.w3.org/2000/svg"'));
+      assert.strictEqual((await request(port, '/api/qr')).status, 400);
+
+      const second = await request(port, '/api/questions', {
+        sessionId, prompt: 'Choose a color.', type: 'choice', choices: ['Green', 'Blue']
+      });
+      assert.strictEqual(second.status, 201);
+      const secondId = second.body.question.id;
+      assert.strictEqual((await request(port, '/api/student/' + sessionId)).body.questions.length, 1, 'Drafts stay hidden');
+      await request(port, '/api/questions/' + secondId + '/open', {});
+      const studentRoute = '/api/student/' + sessionId + '?participantId=student-1';
+      let student = await request(port, studentRoute);
+      assert.deepStrictEqual(student.body.questions.map((question) => question.id), [questionId, secondId]);
+      assert.strictEqual(student.body.responses[0].answer, answer);
+      assert.strictEqual((await request(port, '/api/answers', {
+        sessionId, questionId: secondId, participantId: 'student-1', name: 'Student', answer: 'Green'
+      })).status, 200);
+      student = await request(port, studentRoute);
+      assert.strictEqual(student.body.responses.length, 2, 'Both questions accept independent answers');
+      assert.deepStrictEqual((await request(port, '/api/student/' + sessionId + '?participantId=someone-else')).body.responses, []);
+
+      await request(port, '/api/questions/' + questionId + '/close', {});
+      assert.deepStrictEqual((await request(port, studentRoute)).body.questions.map((question) => question.id), [secondId]);
+      assert.strictEqual((await request(port, '/api/questions/' + questionId, undefined, 'DELETE', '')).status, 401);
+      assert.strictEqual((await request(port, '/api/questions/' + questionId, undefined, 'DELETE')).status, 200);
+      let teacher = (await request(port, '/api/admin')).body.selectedSession;
+      assert.deepStrictEqual(teacher.questions.map((question) => question.id), [secondId]);
+      assert.strictEqual(teacher.responses.length, 1, 'Deleting a question removes only its own responses');
+      assert.strictEqual(teacher.responses[0].questionId, secondId);
+      const afterDeletion = JSON.parse(fs.readFileSync(path.join(directory, 'data', 'store.json'), 'utf8')).sessions[0];
+      assert.strictEqual(afterDeletion.questions.length, 1);
+      assert.strictEqual(afterDeletion.responses.length, 1);
+      assert.strictEqual((await request(port, '/api/questions/' + questionId, undefined, 'DELETE')).status, 404);
+      assert.strictEqual((await request(port, '/api/questions/' + questionId + '/open', {})).status, 404);
+      assert.strictEqual((await request(port, '/api/answers', {
+        sessionId, questionId, participantId: 'student-1', name: 'Student', answer
+      })).status, 409);
+      const remainingCsv = (await request(port, '/api/export/' + sessionId + '.csv')).body.toString();
+      assert(!remainingCsv.includes(answer));
+      assert(remainingCsv.includes('Green'));
+
+      await request(port, '/api/sessions', { name: 'Next class' });
+      const ended = (await request(port, studentRoute)).body;
+      assert.strictEqual(ended.session.isCurrent, false);
+      assert.deepStrictEqual(ended.questions, [], 'A new class closes all questions in the previous class');
+      assert.strictEqual((await request(port, '/api/questions/' + secondId, undefined, 'DELETE')).status, 200, 'Saved classes also allow deletion');
+      teacher = (await request(port, '/api/admin?sessionId=' + sessionId)).body.selectedSession;
+      assert.strictEqual(teacher.questions.length, 0);
+      assert.strictEqual(teacher.responses.length, 0);
+      console.log('Passed: SVG QR, multiple questions, independent answers, protected deletion, and saved classes');
     }
     console.log('Passed: ' + mode + ' network interfaces');
   } finally {

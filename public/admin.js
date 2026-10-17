@@ -65,11 +65,15 @@
     const base = $('#host-address').value.trim().replace(/\/+$/, '');
     const link = $('#participant-link');
     const image = $('#qr-image');
+    const placeholder = $('#qr-placeholder');
     const isSavedClass = session && session.id !== state.currentSessionId;
     if (!session || !base || isSavedClass) {
-      link.textContent = isSavedClass ? 'Saved class · QR unavailable' : session ? 'Enter the iPad’s Wi-Fi address above to create a QR code.' : '';
+      link.textContent = isSavedClass ? 'Saved Class · QR Unavailable' : session ? 'Enter the iPad’s Wi-Fi address above to create a QR code.' : '';
       link.removeAttribute('href');
       image.removeAttribute('src');
+      image.classList.add('hidden');
+      placeholder.textContent = isSavedClass ? 'Select the current class to show its QR code.' : 'Enter the iPad’s Wi-Fi address to show a QR code.';
+      placeholder.classList.remove('hidden');
       image.alt = isSavedClass ? 'QR code unavailable for a saved class' : 'Enter the iPad’s Wi-Fi address to create a QR code';
       return;
     }
@@ -77,18 +81,28 @@
     try {
       joinUrl = new URL(base);
       if (joinUrl.protocol !== 'http:' && joinUrl.protocol !== 'https:') throw new Error('Use an http or https address.');
+      if (['localhost', '127.0.0.1', '0.0.0.0', '[::1]'].includes(joinUrl.hostname)) throw new Error('Use the iPad’s Wi-Fi address, so students can connect.');
       joinUrl.pathname = '/join/' + session.id;
       joinUrl.search = '';
       joinUrl.hash = '';
     } catch (error) {
-      link.textContent = 'Enter a valid address, including http://';
+      link.textContent = error.message === 'Use the iPad’s Wi-Fi address, so students can connect.' ? error.message : 'Enter a valid address, including http://';
       link.removeAttribute('href');
       image.removeAttribute('src');
+      image.classList.add('hidden');
+      placeholder.textContent = link.textContent;
+      placeholder.classList.remove('hidden');
       return;
     }
     link.href = joinUrl.toString();
     link.textContent = joinUrl.toString();
-    image.src = '/api/qr?text=' + encodeURIComponent(joinUrl.toString());
+    const qrSource = '/api/qr?text=' + encodeURIComponent(joinUrl.toString());
+    if (image.getAttribute('src') !== qrSource) {
+      image.classList.add('hidden');
+      placeholder.textContent = 'Creating QR code…';
+      placeholder.classList.remove('hidden');
+      image.src = qrSource;
+    }
     image.alt = 'QR code to join ' + session.name;
   }
 
@@ -109,12 +123,13 @@
       ? renderChoiceResults(question, answers)
       : (answers.length ? '<div class="answer-results">' + answers.slice().reverse().map((answer) => '<div class="written-answer"><p>' + escapeHtml(answer.answer) + '</p><span>' + escapeHtml(answer.name) + (answer.updatedAt ? ' · ' + new Date(answer.updatedAt).toLocaleString() : '') + '</span></div>').join('') + '</div>' : '<p class="hint">No responses yet.</p>');
     return '<article class="question-card ' + (isOpen ? 'is-open' : '') + '" data-question-id="' + question.id + '">' +
-      '<div class="question-top"><div class="question-copy"><div class="question-meta"><span class="type-tag">' + (question.type === 'text' ? 'Written answer' : 'Multiple choice') + '</span><span aria-hidden="true">·</span><span class="status-tag ' + (isOpen ? 'open' : '') + '">' + (isOpen ? 'Open' : question.status === 'closed' ? 'Closed' : 'Draft') + '</span></div><p class="question-prompt">' + escapeHtml(question.prompt) + '</p></div>' +
-      (session.id === state.currentSessionId ? '<div class="question-actions">' + (isOpen
+      '<div class="question-top"><div class="question-copy"><div class="question-meta"><span class="type-tag">' + (question.type === 'text' ? 'Written Answer' : 'Multiple Choice') + '</span><span aria-hidden="true">·</span><span class="status-tag ' + (isOpen ? 'open' : '') + '">' + (isOpen ? 'Open' : question.status === 'closed' ? 'Closed' : 'Draft') + '</span></div><p class="question-prompt">' + escapeHtml(question.prompt) + '</p></div>' +
+      '<div class="question-actions">' + (session.id === state.currentSessionId ? (isOpen
         ? '<button class="small-button" data-action="close" data-id="' + question.id + '">Close</button>'
-        : '<button class="small-button open-action" data-action="open" data-id="' + question.id + '">Open</button>') + '</div>' : '') + '</div>' +
+        : '<button class="small-button open-action" data-action="open" data-id="' + question.id + '">Open</button>') : '') +
+      '<button class="small-button delete-action" data-action="delete" data-id="' + question.id + '">Delete</button></div></div>' +
       '<p class="response-count">' + answers.length + ' ' + (answers.length === 1 ? 'response' : 'responses') + (isOpen ? ' · accepting answers' : '') + '</p>' +
-      '<details class="response-details"><summary>View responses</summary>' + resultMarkup + '</details></article>';
+      '<details class="response-details"><summary>View Responses</summary>' + resultMarkup + '</details></article>';
   }
 
   function render(data) {
@@ -142,9 +157,9 @@
     $('#question-form').classList.toggle('hidden', !isCurrent);
     $('#export-link').href = '/api/export/' + data.selectedSession.id + '.csv';
     $('#question-count').textContent = data.selectedSession.questions.length + (data.selectedSession.questions.length === 1 ? ' question' : ' questions');
-    const openQuestion = data.selectedSession.questions.find((question) => question.status === 'open');
-    $('#room-status').textContent = !isCurrent ? 'Saved class' : openQuestion ? 'Question is open' : 'Ready when you are';
-    $('#open-count').textContent = openQuestion ? '1' : '0';
+    const openCount = data.selectedSession.questions.filter((question) => question.status === 'open').length;
+    $('#room-status').textContent = !isCurrent ? 'Saved Class' : openCount ? (openCount === 1 ? '1 Question Open' : openCount + ' Questions Open') : 'Ready When You Are';
+    $('#open-count').textContent = openCount;
     $('#response-count').textContent = data.selectedSession.responses.length;
     $('#question-list').innerHTML = data.selectedSession.questions.length
       ? data.selectedSession.questions.map((question) => renderQuestion(question, data.selectedSession)).join('')
@@ -171,6 +186,16 @@
 
   $('#question-type').addEventListener('change', () => {
     $('#choices-field').classList.toggle('hidden', $('#question-type').value !== 'choice');
+  });
+  $('#qr-image').addEventListener('load', () => {
+    if (!$('#qr-image').getAttribute('src')) return;
+    $('#qr-image').classList.remove('hidden');
+    $('#qr-placeholder').classList.add('hidden');
+  });
+  $('#qr-image').addEventListener('error', () => {
+    $('#qr-image').classList.add('hidden');
+    $('#qr-placeholder').textContent = 'Could not load the QR code. Use the join link below the address, or reload to retry.';
+    $('#qr-placeholder').classList.remove('hidden');
   });
   $('#host-address').addEventListener('input', updateJoinLink);
   $('#session-picker').addEventListener('change', () => refresh(picker.value).catch((error) => showToast(error.message)));
@@ -211,9 +236,18 @@
   $('#question-list').addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-action]');
     if (!button) return;
+    if (button.dataset.action === 'delete') {
+      const count = state.selectedSession.responses.filter((answer) => answer.questionId === button.dataset.id).length;
+      if (!window.confirm('Delete this question' + (count ? ' and its ' + count + ' saved ' + (count === 1 ? 'response' : 'responses') : '') + '?')) return;
+    }
     button.disabled = true;
     try {
-      await api('/api/questions/' + button.dataset.id + '/' + button.dataset.action, { method: 'POST' });
+      if (button.dataset.action === 'delete') {
+        await api('/api/questions/' + button.dataset.id, { method: 'DELETE' });
+        showToast('Question deleted.');
+      } else {
+        await api('/api/questions/' + button.dataset.id + '/' + button.dataset.action, { method: 'POST' });
+      }
       await refresh(state.selectedSession.id);
     } catch (error) {
       showToast(error.message);

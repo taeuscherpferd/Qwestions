@@ -169,7 +169,8 @@ function sendFile(response, filename) {
 async function handleApi(request, response, url) {
   const pathname = url.pathname;
   const adminRoute = (request.method === 'GET' && (pathname === '/api/admin' || /^\/api\/export\/[a-f0-9]+\.csv$/.test(pathname))) ||
-    (request.method === 'POST' && (pathname === '/api/sessions' || pathname === '/api/questions' || /^\/api\/questions\/[a-f0-9]+\/(open|close)$/.test(pathname)));
+    (request.method === 'POST' && (pathname === '/api/sessions' || pathname === '/api/questions' || /^\/api\/questions\/[a-f0-9]+\/(open|close)$/.test(pathname))) ||
+    (request.method === 'DELETE' && /^\/api\/questions\/[a-f0-9]+$/.test(pathname));
   if (adminRoute) {
     const provided = Buffer.from(request.headers['x-admin-key'] || '');
     const expected = Buffer.from(adminToken);
@@ -261,12 +262,6 @@ async function handleApi(request, response, url) {
     }
     const now = new Date().toISOString();
     if (questionAction[2] === 'open') {
-      session.questions.forEach((item) => {
-        if (item.status === 'open' && item.id !== question.id) {
-          item.status = 'closed';
-          item.closedAt = now;
-        }
-      });
       question.status = 'open';
       question.openedAt = now;
       delete question.closedAt;
@@ -279,6 +274,21 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  const deleteQuestion = pathname.match(/^\/api\/questions\/([a-f0-9]+)$/);
+  if (request.method === 'DELETE' && deleteQuestion) {
+    const questionId = deleteQuestion[1];
+    const session = store.sessions.find((item) => item.questions.some((question) => question.id === questionId));
+    if (!session) {
+      sendJson(response, 404, { error: 'Question not found.' });
+      return;
+    }
+    session.questions = session.questions.filter((question) => question.id !== questionId);
+    session.responses = session.responses.filter((answer) => answer.questionId !== questionId);
+    saveStore();
+    sendJson(response, 200, { deletedQuestionId: questionId });
+    return;
+  }
+
   const studentRoute = pathname.match(/^\/api\/student\/([a-f0-9]+)$/);
   if (request.method === 'GET' && studentRoute) {
     const session = findSession(studentRoute[1]);
@@ -286,15 +296,15 @@ async function handleApi(request, response, url) {
       sendJson(response, 404, { error: 'This class link has expired.' });
       return;
     }
-    const question = session.questions.find((item) => item.status === 'open') || null;
+    const questions = session.questions.filter((item) => item.status === 'open');
     const participantId = safeText(url.searchParams.get('participantId'), 100);
-    const savedResponse = question && participantId
-      ? session.responses.find((item) => item.questionId === question.id && item.participantId === participantId) || null
-      : null;
+    const responses = participantId
+      ? session.responses.filter((item) => item.participantId === participantId && questions.some((question) => question.id === item.questionId))
+      : [];
     sendJson(response, 200, {
       session: { id: session.id, name: session.name, isCurrent: session.id === store.currentSessionId },
-      question,
-      response: savedResponse
+      questions,
+      responses
     });
     return;
   }
@@ -392,18 +402,18 @@ async function handleApi(request, response, url) {
       return;
     }
     try {
-      const png = await QRCode.toBuffer(text, {
-        type: 'png',
+      const svg = await QRCode.toString(text, {
+        type: 'svg',
         width: 280,
-        margin: 1,
+        margin: 4,
         errorCorrectionLevel: 'M'
       });
       response.writeHead(200, {
-        'Content-Type': 'image/png',
+        'Content-Type': 'image/svg+xml; charset=utf-8',
         'Cache-Control': 'no-store',
         'X-Content-Type-Options': 'nosniff'
       });
-      response.end(png);
+      response.end(svg);
     } catch (error) {
       sendJson(response, 400, { error: 'Could not create the QR code.' });
     }

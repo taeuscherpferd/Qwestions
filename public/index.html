@@ -17,45 +17,45 @@
     <section class="main-column">
       <div class="page-heading">
         <div>
-          <p class="eyebrow">TEACHER DESK</p>
-          <h1>Your questions, in the room.</h1>
-          <p class="subheading">Open one question at a time. Responses save on this iPad.</p>
+          <p class="eyebrow">Teacher Desk</p>
+          <h1>Your Questions, in the Room.</h1>
+          <p class="subheading">Open questions for the room. Responses save on this iPad.</p>
         </div>
-        <button class="button button-dark" id="new-session">＋ New class</button>
+        <button class="button button-dark" id="new-session">＋ New Class</button>
       </div>
 
       <section class="panel session-panel">
         <div class="panel-heading">
-          <div><p class="eyebrow">CLASS</p><h2 id="session-title">Loading…</h2></div>
+          <div><p class="eyebrow">Class</p><h2 id="session-title">Loading…</h2></div>
           <select id="session-picker" aria-label="Choose a saved class"></select>
         </div>
         <div id="archive-note" class="notice hidden">You’re viewing a saved class. Start a new class to collect more answers.</div>
         <div class="share-layout">
           <div class="share-copy">
-            <h3>Invite the room</h3>
+            <h3>Invite the Room</h3>
             <p>Students scan this code with their camera and answer in their browser.</p>
-            <label for="host-address">iPad address on this Wi-Fi</label>
-            <div class="address-row"><input id="host-address" type="url" spellcheck="false" aria-describedby="address-hint"><button id="copy-link" class="button button-light">Copy link</button></div>
+            <label for="host-address">iPad Address on This Wi-Fi</label>
+            <div class="address-row"><input id="host-address" type="url" spellcheck="false" aria-describedby="address-hint"><button id="copy-link" class="button button-light">Copy Link</button></div>
             <p id="address-hint" class="hint">Find the IP address in Settings → Wi-Fi → ⓘ. Include http:// and the server port. Keep everyone on the same network.</p>
             <a id="participant-link" class="participant-link" href="#" target="_blank" rel="noreferrer"></a>
           </div>
-          <div class="qr-card"><img id="qr-image" alt="QR code for students to join this class"><span>SCAN TO JOIN</span></div>
+          <div class="qr-card"><p id="qr-placeholder" class="qr-placeholder" role="status">Enter the iPad’s Wi-Fi address to show a QR code.</p><img id="qr-image" class="hidden" alt="QR code for students to join this class"><span>Scan to Join</span></div>
         </div>
       </section>
 
       <section class="panel questions-panel">
         <div class="panel-heading question-heading">
-          <div><p class="eyebrow">QUESTION SETUP</p><h2>Questions</h2></div>
+          <div><p class="eyebrow">Question Setup</p><h2>Questions</h2></div>
           <span id="question-count" class="count-pill">0 questions</span>
         </div>
         <form id="question-form" class="question-form">
           <label class="field-label" for="prompt">Question</label>
           <textarea id="prompt" rows="2" maxlength="500" required placeholder="What would you like to ask?"></textarea>
           <div class="form-row">
-            <div class="type-field"><label class="field-label" for="question-type">Answer format</label><select id="question-type"><option value="choice">Multiple choice</option><option value="text">Written answer</option></select></div>
-            <button class="button button-accent" type="submit">Add question <span aria-hidden="true">↗</span></button>
+            <div class="type-field"><label class="field-label" for="question-type">Answer Format</label><select id="question-type"><option value="choice">Multiple Choice</option><option value="text">Written Answer</option></select></div>
+            <button class="button button-accent" type="submit">Add Question <span aria-hidden="true">↗</span></button>
           </div>
-          <div id="choices-field" class="choices-field"><label class="field-label" for="choices">Answer choices <span class="label-note">one per line</span></label><textarea id="choices" rows="4" placeholder="A\nB\nC\nD"></textarea></div>
+          <div id="choices-field" class="choices-field"><label class="field-label" for="choices">Answer Choices <span class="label-note">one per line</span></label><textarea id="choices" rows="4" placeholder="First option&#10;Second option&#10;Third option"></textarea></div>
           <p id="form-message" class="form-message" role="status"></p>
         </form>
         <div id="question-list" class="question-list"></div>
@@ -64,15 +64,15 @@
 
     <aside class="side-column">
       <section class="panel side-panel">
-        <div class="side-heading"><span class="live-dot"></span><div><p class="eyebrow">LIVE ROOM</p><h2 id="room-status">Ready when you are</h2></div></div>
-        <p class="side-description">Open a question when you want the room to answer. Students can change their answer until you close it.</p>
-        <div class="room-stats"><div><strong id="open-count">0</strong><span>open now</span></div><div><strong id="response-count">0</strong><span>responses</span></div></div>
+        <div class="side-heading"><span class="live-dot"></span><div><p class="eyebrow">Live Room</p><h2 id="room-status">Ready When You Are</h2></div></div>
+        <p class="side-description">Open as many questions as you need. Students can answer each one and make changes until you close it.</p>
+        <div class="room-stats"><div><strong id="open-count">0</strong><span>Open Now</span></div><div><strong id="response-count">0</strong><span>Responses</span></div></div>
       </section>
       <section class="panel side-panel save-panel">
         <div class="save-icon" aria-hidden="true">↧</div>
-        <p class="eyebrow">KEEP A COPY</p><h2>Answers stay here.</h2>
+        <p class="eyebrow">Keep a Copy</p><h2>Answers Stay Here.</h2>
         <p class="side-description">Your classes and responses are saved on the server device. Download a spreadsheet-friendly copy whenever you need one.</p>
-        <a id="export-link" class="button button-light button-wide" href="#">Download responses CSV <span aria-hidden="true">↓</span></a>
+        <a id="export-link" class="button button-light button-wide" href="#">Download Responses <span aria-hidden="true">↓</span></a>
       </section>
       <p class="local-note"><span aria-hidden="true">⌂</span> Local network only · No student app or account needed</p>
     </aside>

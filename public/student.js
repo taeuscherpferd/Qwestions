@@ -3,8 +3,8 @@
   const sessionId = window.location.pathname.split('/')[2];
   const storageKey = 'qwestions:participant:' + sessionId;
   let identity = null;
-  let currentQuestionId = null;
   let polling = false;
+  let editingIdentity = false;
 
   function makeId() {
     if (window.crypto && window.crypto.getRandomValues) {
@@ -32,6 +32,7 @@
   }
 
   function showIdentity() {
+    editingIdentity = true;
     $('#identity-panel').classList.remove('hidden');
     $('#waiting-panel').classList.add('hidden');
     $('#question-panel').classList.add('hidden');
@@ -50,12 +51,12 @@
     saveIdentity();
     $('#join-error').textContent = '';
     $('#identity-panel').classList.add('hidden');
-    currentQuestionId = null;
+    editingIdentity = false;
     poll();
   }
 
   function renderWaiting(ended) {
-    currentQuestionId = null;
+    $('#question-panel').replaceChildren();
     $('#identity-panel').classList.add('hidden');
     $('#question-panel').classList.add('hidden');
     $('#waiting-panel').classList.remove('hidden');
@@ -66,15 +67,11 @@
       : 'There isn’t a question open right now. This page will update when your teacher opens one.';
   }
 
-  function renderQuestion(question, savedResponse) {
-    if (currentQuestionId === question.id) return;
-    currentQuestionId = question.id;
-    $('#waiting-panel').classList.add('hidden');
-    $('#identity-panel').classList.add('hidden');
-    const panel = $('#question-panel');
-    panel.classList.remove('hidden');
-    const content = document.createElement('div');
-    content.innerHTML = '<p class="eyebrow">YOUR TURN</p><h2></h2><form id="answer-form"></form><p class="answer-status" role="status"></p>';
+  function createQuestion(question, savedResponse) {
+    const content = document.createElement('article');
+    content.className = 'student-question-card';
+    content.dataset.questionId = question.id;
+    content.innerHTML = '<p class="eyebrow">Your Turn</p><h2></h2><form class="answer-form"></form><p class="answer-status" role="status"></p>';
     content.querySelector('h2').textContent = question.prompt;
     const form = content.querySelector('form');
     if (question.type === 'choice') {
@@ -106,16 +103,15 @@
     }
     const submitRow = document.createElement('div');
     submitRow.className = 'student-submit';
-    submitRow.innerHTML = '<span class="hint">You can change your answer while the question is open.</span><button class="button button-accent" type="submit">Send answer ↗</button>';
+    submitRow.innerHTML = '<span class="hint">You can change your answer while the question is open.</span><button class="button button-accent" type="submit">Send Answer ↗</button>';
     form.appendChild(submitRow);
     content.querySelector('.answer-status').textContent = savedResponse ? 'Your answer is saved. You can update it while this question stays open.' : '';
-    panel.replaceChildren(content);
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const answer = question.type === 'choice'
         ? (new FormData(form).get('answer') || '')
         : form.elements.answer.value.trim();
-      const status = panel.querySelector('.answer-status');
+      const status = content.querySelector('.answer-status');
       const button = form.querySelector('button[type="submit"]');
       button.disabled = true;
       status.textContent = 'Sending…';
@@ -132,17 +128,36 @@
         button.disabled = false;
       }
     });
+    return content;
+  }
+
+  function renderQuestions(questions, responses) {
+    $('#waiting-panel').classList.add('hidden');
+    $('#identity-panel').classList.add('hidden');
+    const panel = $('#question-panel');
+    panel.classList.remove('hidden');
+    const openIds = new Set(questions.map((question) => question.id));
+    Array.from(panel.children).forEach((card) => {
+      if (!openIds.has(card.dataset.questionId)) card.remove();
+    });
+    questions.forEach((question, index) => {
+      // Keep existing forms so polling never discards an answer being written.
+      const card = panel.querySelector('[data-question-id="' + question.id + '"]') ||
+        createQuestion(question, responses.find((answer) => answer.questionId === question.id));
+      if (panel.children[index] !== card) panel.insertBefore(card, panel.children[index] || null);
+    });
   }
 
   async function poll() {
-    if (!identity || polling) return;
+    if (!identity || polling || editingIdentity) return;
     polling = true;
     try {
       const data = await api('/api/student/' + encodeURIComponent(sessionId) + '?participantId=' + encodeURIComponent(identity.id));
+      if (editingIdentity) return;
       $('#student-session').textContent = data.session.name;
       $('#student-error').classList.add('hidden');
       if (!data.session.isCurrent) renderWaiting(true);
-      else if (data.question) renderQuestion(data.question, data.response);
+      else if (data.questions.length) renderQuestions(data.questions, data.responses);
       else renderWaiting(false);
     } catch (error) {
       $('#student-error').textContent = error.message;
