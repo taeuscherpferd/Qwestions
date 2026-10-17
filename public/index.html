@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f2ec">
+  <title>Qwestions · Host</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body class="admin-page">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Qwestions home"><span class="brand-mark">Q</span><span>qwestions</span></a>
+    <span class="top-note">A little classroom response tool</span>
+  </header>
+  <main class="layout">
+    <section class="main-column">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">TEACHER DESK</p>
+          <h1>Your questions, in the room.</h1>
+          <p class="subheading">Open one question at a time. Responses save on this iPad.</p>
+        </div>
+        <button class="button button-dark" id="new-session">＋ New class</button>
+      </div>
+
+      <section class="panel session-panel">
+        <div class="panel-heading">
+          <div><p class="eyebrow">CLASS</p><h2 id="session-title">Loading…</h2></div>
+          <select id="session-picker" aria-label="Choose a saved class"></select>
+        </div>
+        <div id="archive-note" class="notice hidden">You’re viewing a saved class. Start a new class to collect more answers.</div>
+        <div class="share-layout">
+          <div class="share-copy">
+            <h3>Invite the room</h3>
+            <p>Students scan this code with their camera and answer in their browser.</p>
+            <label for="host-address">iPad address on this Wi-Fi</label>
+            <div class="address-row"><input id="host-address" type="url" spellcheck="false" aria-describedby="address-hint"><button id="copy-link" class="button button-light">Copy link</button></div>
+            <p id="address-hint" class="hint">Use the iPad’s Wi-Fi address. Keep everyone on the same network.</p>
+            <a id="participant-link" class="participant-link" href="#" target="_blank" rel="noreferrer"></a>
+          </div>
+          <div class="qr-card"><img id="qr-image" alt="QR code for students to join this class"><span>SCAN TO JOIN</span></div>
+        </div>
+      </section>
+
+      <section class="panel questions-panel">
+        <div class="panel-heading question-heading">
+          <div><p class="eyebrow">QUESTION SETUP</p><h2>Questions</h2></div>
+          <span id="question-count" class="count-pill">0 questions</span>
+        </div>
+        <form id="question-form" class="question-form">
+          <label class="field-label" for="prompt">Question</label>
+          <textarea id="prompt" rows="2" maxlength="500" required placeholder="What would you like to ask?"></textarea>
+          <div class="form-row">
+            <div class="type-field"><label class="field-label" for="question-type">Answer format</label><select id="question-type"><option value="choice">Multiple choice</option><option value="text">Written answer</option></select></div>
+            <button class="button button-accent" type="submit">Add question <span aria-hidden="true">↗</span></button>
+          </div>
+          <div id="choices-field" class="choices-field"><label class="field-label" for="choices">Answer choices <span class="label-note">one per line</span></label><textarea id="choices" rows="4" placeholder="A\nB\nC\nD"></textarea></div>
+          <p id="form-message" class="form-message" role="status"></p>
+        </form>
+        <div id="question-list" class="question-list"></div>
+      </section>
+    </section>
+
+    <aside class="side-column">
+      <section class="panel side-panel">
+        <div class="side-heading"><span class="live-dot"></span><div><p class="eyebrow">LIVE ROOM</p><h2 id="room-status">Ready when you are</h2></div></div>
+        <p class="side-description">Open a question when you want the room to answer. Students can change their answer until you close it.</p>
+        <div class="room-stats"><div><strong id="open-count">0</strong><span>open now</span></div><div><strong id="response-count">0</strong><span>responses</span></div></div>
+      </section>
+      <section class="panel side-panel save-panel">
+        <div class="save-icon" aria-hidden="true">↧</div>
+        <p class="eyebrow">KEEP A COPY</p><h2>Answers stay here.</h2>
+        <p class="side-description">Your classes and responses are saved on the server device. Download a spreadsheet-friendly copy whenever you need one.</p>
+        <a id="export-link" class="button button-light button-wide" href="#">Download responses CSV <span aria-hidden="true">↓</span></a>
+      </section>
+      <p class="local-note"><span aria-hidden="true">⌂</span> Local network only · No student app or account needed</p>
+    </aside>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
